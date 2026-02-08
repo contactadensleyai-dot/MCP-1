@@ -41,4 +41,33 @@ def api_test():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=port) from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI(title="MCP Cabinet Pro", description="Agent professionnel MCP pour cabinet", version="1.0")
+
+# Route racine pour vérifier que le MCP fonctionne
+@app.get("/")
+def read_root():
+    return {
+        "message": "Bienvenue sur ton MCP professionnel !",
+        "status": "opérationnel",
+        "instructions": "Utilisez /predict pour interagir avec l'agent."
+    }
+
+# Modèle pour la requête /predict
+class PredictRequest(BaseModel):
+    query: str
+
+# Exemple d'endpoint pour prédiction ou interaction avec ton agent
+@app.post("/predict")
+def predict(request: PredictRequest):
+    # Ici tu peux ajouter ta logique IA ou réponse de ton agent
+    response_text = f"Réponse simulée pour : '{request.query}'"
+    return {
+        "query": request.query,
+        "response": response_text
+    }
+
+# Tu peux ajouter d'autres endpoints pour ton MCP ici
+# Exemple: /ask, /chat, /status, etc.
