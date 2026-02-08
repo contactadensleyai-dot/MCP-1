@@ -1,0 +1,44 @@
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+import os
+
+app = FastAPI()
+
+# ---------------------------
+# Servir les fichiers statiques (HTML, CSS, JS)
+# Crée un dossier "static" à la racine de ton projet et mets ton index.html dedans
+# ---------------------------
+if not os.path.exists("static"):
+    os.makedirs("static")  # Crée le dossier si il n'existe pas
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ---------------------------
+# Route racine "/"
+# ---------------------------
+@app.get("/", response_class=HTMLResponse)
+def root():
+    # Si tu as un index.html dans /static, il sera servi ici
+    index_path = "static/index.html"
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            return f.read()
+    else:
+        return "<h1>Bienvenue sur ton MCP !</h1><p>Place ton index.html dans /static pour remplacer ce message.</p>"
+
+# ---------------------------
+# Exemple de route API JSON
+# ---------------------------
+@app.get("/api")
+def api_test():
+    return {"message": "MCP API fonctionne parfaitement 😎"}
+
+# ---------------------------
+# Démarrage du serveur
+# Render s’occupe de l’host et du port, donc tu n’as rien à changer ici
+# ---------------------------
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
