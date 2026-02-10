@@ -1,33 +1,65 @@
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
+from typing import Optional
+
+# =========================
+# CONFIG
+# =========================
+API_KEY = "CHANGE_MOI_API_KEY_123"  # tu peux mettre ce que tu veux
 
 app = FastAPI(
     title="MCP Cabinet Pro",
-    description="Agent professionnel MCP pour cabinet, compatible Relevance AI",
+    description="MCP professionnel conforme au standard MCP pour Relevance AI",
     version="1.0"
 )
 
-# ====== CONFIGURATION DU TOKEN ======
-API_KEY = "mon_secret_mcp"  # Change ce mot de passe si tu veux
-HEADER_NAME = "x-api-key"
-
-def verify_api_key(x_api_key: str = Header(...)):
-    """Vérifie que la requête contient le bon token"""
+# =========================
+# AUTH
+# =========================
+def verify_api_key(x_api_key: Optional[str] = Header(None)):
     if x_api_key != API_KEY:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Clé API invalide")
 
-# ====== ROUTE RACINE ======
-@app.get("/")
-def read_root():
+# =========================
+# MCP MANIFEST (OBLIGATOIRE)
+# ⚠️ PAS DE CLÉ ICI
+# =========================
+@app.get("/mcp/manifest")
+def mcp_manifest():
     return {
-        "message": "Bienvenue sur ton MCP professionnel !",
-        "status": "opérationnel",
-        "instructions": "Utilisez /mcp/context et /mcp/decision pour interagir avec l'agent."
+        "name": "mcp-cabinet-pro",
+        "description": "MCP professionnel pour cabinet (emails, décisions, conformité)",
+        "version": "1.0",
+        "auth": {
+            "type": "header",
+            "header": "x-api-key"
+        },
+        "endpoints": {
+            "context": "/mcp/context",
+            "decision": "/mcp/decision"
+        }
     }
 
-# ====== ROUTE CONTEXT ======
+# =========================
+# ROOT (TEST)
+# =========================
+@app.get("/")
+def root():
+    return {
+        "status": "opérationnel",
+        "message": "Bienvenue sur ton MCP professionnel",
+        "instructions": [
+            "/mcp/manifest",
+            "/mcp/context",
+            "/mcp/decision"
+        ]
+    }
+
+# =========================
+# MCP CONTEXT
+# =========================
 @app.get("/mcp/context")
-def get_context(x_api_key: str = Header(...)):
+def get_context(x_api_key: Optional[str] = Header(None)):
     verify_api_key(x_api_key)
     return {
         "send_email_allowed": False,
@@ -35,27 +67,31 @@ def get_context(x_api_key: str = Header(...)):
         "default_action": "create_draft_only"
     }
 
-# ====== ROUTE DECISION ======
+# =========================
+# MODELE DE DONNÉES
+# =========================
 class DecisionPayload(BaseModel):
     email_category: str
     domain: str
     confidence_level: str
 
+# =========================
+# MCP DECISION
+# =========================
 @app.post("/mcp/decision")
-def decision(payload: DecisionPayload, x_api_key: str = Header(...)):
+def decision(
+    payload: DecisionPayload,
+    x_api_key: Optional[str] = Header(None)
+):
     verify_api_key(x_api_key)
 
-    category = payload.email_category
-    domain = payload.domain
-    confidence = payload.confidence_level
-
-    if category == "C":
+    if payload.email_category == "C":
         return {"action": "alert_manager"}
 
-    if domain in ["fiscal", "juridique"] and confidence != "suffisant":
+    if payload.domain in ["fiscal", "juridique"] and payload.confidence_level != "suffisant":
         return {"action": "create_draft_only"}
 
-    if category == "A":
+    if payload.email_category == "A":
         return {"action": "send_allowed"}
 
     return {"action": "create_draft_only"}
