@@ -5,7 +5,7 @@ from typing import Optional
 # =========================
 # CONFIG
 # =========================
-API_KEY = "CHANGE_MOI_API_KEY_123"  # tu peux mettre ce que tu veux
+API_KEY = "CHANGE_MOI_API_KEY_123"
 
 app = FastAPI(
     title="MCP Cabinet Pro",
@@ -21,10 +21,20 @@ def verify_api_key(x_api_key: Optional[str] = Header(None)):
         raise HTTPException(status_code=401, detail="Clé API invalide")
 
 # =========================
-# MCP MANIFEST (OBLIGATOIRE)
-# ⚠️ PAS DE CLÉ ICI
+# ROOT (OBLIGATOIRE POUR RENDER)
 # =========================
-@app.get("/mcp/manifest")
+@app.api_route("/", methods=["GET", "HEAD"])
+def root():
+    return {
+        "status": "ok",
+        "message": "MCP Cabinet Pro opérationnel"
+    }
+
+# =========================
+# MCP MANIFEST (CRITIQUE)
+# DOIT SUPPORTER HEAD
+# =========================
+@app.api_route("/mcp/manifest", methods=["GET", "HEAD"])
 def mcp_manifest():
     return {
         "name": "mcp-cabinet-pro",
@@ -35,24 +45,15 @@ def mcp_manifest():
             "header": "x-api-key"
         },
         "endpoints": {
-            "context": "/mcp/context",
-            "decision": "/mcp/decision"
+            "context": {
+                "path": "/mcp/context",
+                "method": "GET"
+            },
+            "decision": {
+                "path": "/mcp/decision",
+                "method": "POST"
+            }
         }
-    }
-
-# =========================
-# ROOT (TEST)
-# =========================
-@app.get("/")
-def root():
-    return {
-        "status": "opérationnel",
-        "message": "Bienvenue sur ton MCP professionnel",
-        "instructions": [
-            "/mcp/manifest",
-            "/mcp/context",
-            "/mcp/decision"
-        ]
     }
 
 # =========================
@@ -68,7 +69,7 @@ def get_context(x_api_key: Optional[str] = Header(None)):
     }
 
 # =========================
-# MODELE DE DONNÉES
+# DATA MODEL
 # =========================
 class DecisionPayload(BaseModel):
     email_category: str
