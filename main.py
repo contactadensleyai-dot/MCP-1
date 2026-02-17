@@ -10,59 +10,74 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- STRUCTURE MCP OFFICIELLE ---
 @app.api_route("/", methods=["GET", "POST"])
-async def root(request: Request):
-    # Si c'est un POST, on traite ça comme une demande JSON-RPC
-    if request.method == "POST":
-        body = await request.json()
-        method = body.get("method")
-        msg_id = body.get("id")
+async def mcp_gateway(request: Request):
+    # Pour le navigateur ou le test de Render
+    if request.method == "GET":
+        return {"status": "MCP Server Ready", "message": "Connect with Relevance AI"}
 
-        # 1. Relevance demande la liste des outils
-        if method == "tools/list":
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "result": {
-                    "tools": [
-                        {
-                            "name": "decision_tool",
-                            "description": "Analyse un email pour cabinet",
-                            "inputSchema": {
-                                "type": "object",
-                                "properties": {
-                                    "email_category": {"type": "string"},
-                                    "domain": {"type": "string"},
-                                    "confidence_level": {"type": "string"}
-                                },
-                                "required": ["email_category", "domain", "confidence_level"]
-                            }
+    # Pour Relevance AI (POST)
+    body = await request.json()
+    method = body.get("method")
+    msg_id = body.get("id")
+
+    # 1. ÉTAPE D'INITIALISATION (Crucial pour Relevance)
+    if method == "initialize":
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {
+                    "tools": {}
+                },
+                "serverInfo": {
+                    "name": "CabinetPro",
+                    "version": "1.0.0"
+                }
+            }
+        }
+
+    # 2. LISTE DES OUTILS
+    if method == "tools/list":
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": {
+                "tools": [
+                    {
+                        "name": "decision_tool",
+                        "description": "Décide de l'action pour un email (A, B ou C)",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "email_category": {"type": "string"},
+                                "domain": {"type": "string"},
+                                "confidence_level": {"type": "string"}
+                            },
+                            "required": ["email_category", "domain", "confidence_level"]
                         }
-                    ]
-                }
+                    }
+                ]
             }
+        }
 
-        # 2. Relevance demande d'exécuter l'outil
-        if method == "tools/call":
-            params = body.get("params", {})
-            arguments = params.get("arguments", {})
-            cat = arguments.get("email_category", "A").upper()
-            
-            action = "alert_manager" if cat == "C" else "create_draft_only"
-            
-            return {
-                "jsonrpc": "2.0",
-                "id": msg_id,
-                "result": {
-                    "content": [{"type": "text", "text": action}]
-                }
+    # 3. APPEL DE L'OUTIL
+    if method == "tools/call":
+        params = body.get("params", {})
+        args = params.get("arguments", {})
+        cat = args.get("email_category", "A").upper()
+        
+        # Logique simplifiée
+        action = "alert_manager" if cat == "C" else "create_draft_only"
+        
+        return {
+            "jsonrpc": "2.0",
+            "id": msg_id,
+            "result": {
+                "content": [{"type": "text", "text": action}]
             }
+        }
 
-    # Si c'est un GET (navigateur), on renvoie une info simple
-    return {"status": "MCP Server Running", "protocol": "JSON-RPC 2.0"}
-
-# Route secondaire au cas où
-@app.post("/mcp/execute")
-async def execute_legacy(request: Request):
-    return {"message": "Please use the root URL for JSON-RPC MCP"}
+    # Réponse par défaut pour les pings
+    return {"jsonrpc": "2.0", "id": msg_id, "result": {}}
