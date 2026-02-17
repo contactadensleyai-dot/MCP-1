@@ -2,9 +2,9 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
-# =========================
-# CONFIG
-# =========================
+# ==============================
+# CONFIGURATION
+# ==============================
 API_KEY = "CHANGE_MOI_API_KEY_123"
 
 app = FastAPI(
@@ -12,31 +12,34 @@ app = FastAPI(
     version="1.0"
 )
 
-# =========================
-# AUTH CHECK
-# =========================
+# ==============================
+# AUTH VERIFICATION
+# ==============================
 def verify_api_key(x_api_key: Optional[str]):
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
-# =========================
-# ROOT
-# =========================
-@app.api_route("/", methods=["GET", "HEAD"])
+# ==============================
+# ROOT (Health Check)
+# ==============================
+@app.get("/")
 def root():
-    return {"status": "ok"}
+    return {
+        "status": "operational",
+        "service": "mcp-cabinet-pro"
+    }
 
-# =========================
-# MCP MANIFEST
-# =========================
-@app.api_route("/mcp/manifest", methods=["GET", "HEAD"])
+# ==============================
+# MCP MANIFEST (IMPORTANT)
+# ==============================
+@app.get("/mcp/manifest")
 def manifest():
     return {
         "name": "mcp-cabinet-pro",
         "description": "MCP professionnel pour cabinet",
         "version": "1.0",
         "auth": {
-            "type": "none"   # 🔥 IMPORTANT
+            "type": "none"   # 🔥 IMPORTANT pour Relevance
         },
         "tools": [
             {
@@ -50,7 +53,11 @@ def manifest():
                         "domain": {"type": "string"},
                         "confidence_level": {"type": "string"}
                     },
-                    "required": ["email_category", "domain", "confidence_level"]
+                    "required": [
+                        "email_category",
+                        "domain",
+                        "confidence_level"
+                    ]
                 },
                 "output_schema": {
                     "type": "object",
@@ -62,16 +69,16 @@ def manifest():
         ]
     }
 
-# =========================
+# ==============================
 # TOOL EXECUTION MODEL
-# =========================
+# ==============================
 class ToolExecution(BaseModel):
     tool_id: str
     input: Dict[str, Any]
 
-# =========================
-# TOOL EXECUTION
-# =========================
+# ==============================
+# TOOL EXECUTION ENDPOINT
+# ==============================
 @app.post("/mcp/execute")
 def execute_tool(
     payload: ToolExecution,
@@ -88,12 +95,16 @@ def execute_tool(
     domain = data.get("domain")
     confidence_level = data.get("confidence_level")
 
+    # Logique décisionnelle
     if email_category == "C":
         action = "alert_manager"
+
     elif domain in ["fiscal", "juridique"] and confidence_level != "suffisant":
         action = "create_draft_only"
+
     elif email_category == "A":
         action = "send_allowed"
+
     else:
         action = "create_draft_only"
 
