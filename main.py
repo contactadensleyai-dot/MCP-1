@@ -13,7 +13,7 @@ app = FastAPI(
 )
 
 # =========================
-# AUTH
+# AUTH CHECK
 # =========================
 def verify_api_key(x_api_key: Optional[str]):
     if x_api_key != API_KEY:
@@ -36,8 +36,7 @@ def manifest():
         "description": "MCP professionnel pour cabinet",
         "version": "1.0",
         "auth": {
-            "type": "header",
-            "header": "x-api-key"
+            "type": "none"   # 🔥 IMPORTANT
         },
         "tools": [
             {
@@ -71,7 +70,7 @@ class ToolExecution(BaseModel):
     input: Dict[str, Any]
 
 # =========================
-# TOOL EXECUTION ENDPOINT
+# TOOL EXECUTION
 # =========================
 @app.post("/mcp/execute")
 def execute_tool(
@@ -91,13 +90,10 @@ def execute_tool(
 
     if email_category == "C":
         action = "alert_manager"
-
     elif domain in ["fiscal", "juridique"] and confidence_level != "suffisant":
         action = "create_draft_only"
-
     elif email_category == "A":
         action = "send_allowed"
-
     else:
         action = "create_draft_only"
 
